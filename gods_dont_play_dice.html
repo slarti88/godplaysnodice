@@ -1,0 +1,183 @@
+<html>
+  <head>
+    <script src="http://code.createjs.com/createjs-2014.12.12.min.js"></script>
+    <script>
+
+    var cellWidth = 6;
+    var cellHeight = 6;
+
+    var cellArray = [];
+    var colorArray = ["red","blue"];
+    var stage;
+    var count =0;
+
+    var scale = 2;
+
+    var rows;
+    var cols;
+
+    function init() {
+        stage = new createjs.Stage("myCanvas");
+        rows = stage.canvas.height/(cellHeight*scale);
+        cols = stage.canvas.width/(cellWidth*scale);
+
+
+        for (var i = 0;i < rows; ++i) {
+          var tempArray = [];
+          for (var j = 0;j < cols; ++j) {
+            var cell ={};
+            
+            cell.spawnTime = 0;
+            tempArray.push(cell);
+
+            
+
+            // var randomVal = Math.random(0.7);
+
+          // //console.log("randomval " + randomVal);
+            
+            // if (randomVal > 0.5) {
+            //     cell.type = 1;
+            // }
+
+
+            if ((i == rows/2)&& (j == cols/2)) {
+              circle = drawCircle((j+.5)*cellWidth,
+                     (i+.5)*cellHeight,
+                     cellWidth,"red");
+              cell.type = 1;
+            } else {
+              circle = drawCircle((j+.5)*cellWidth,
+                     (i+.5)*cellHeight,
+                     cellWidth,"blue");
+              circle.graphics.clear();
+              cell.type = 0;
+            }
+          //     circle = drawCircle((j+.5)*cellWidth,
+          //            (i+.5)*cellHeight,
+          //            cellWidth,"red");
+          //            cell.type = 1;
+          //   } else {
+              
+                       
+          //   }
+            stage.addChild(circle);
+            cell.circle = circle;
+          }
+          cellArray.push(tempArray);
+
+        }
+
+        console.log("cell l1 " + cellArray.length + " l2 " + cellArray[0].length);
+
+        createjs.Ticker.framerate = 10;
+        createjs.Ticker.addEventListener("tick", handleTick)
+
+        stage.update();
+    }
+
+    function handleTick() {
+      ++count;
+      
+
+      //console.log("rows " + rows + " cols " + cols);
+      var typeArray = [];
+      for (var i = 0;i < rows; ++i) {
+        // var tempArray = cellArray[i];
+        // var cloneRowArray = [];
+        for (var j = 0;j < cols; ++j) {
+          var cell = cellArray[i][j];
+          typeArray.push(applyRule(cell,i,j));
+          // cloneRowArray.push(cloneCell);
+        }
+        // cloneArray.push(cloneRowArray);
+      }
+
+      for(var i = 0;i < cellArray.length;i++){
+        for(var j =0;j < cellArray[i].length;j++){
+          cellArray[i][j].type = typeArray[i*cellArray.length + j];
+          var cell = cellArray[i][j]; 
+          changeCircle(cell.circle,cell.type);    
+        }
+      }
+      
+
+      stage.update();      
+
+    }
+
+    // Type - 0 = empty, 1 = red, 2 = blue
+    function changeCircle(circle, newType) {
+      circle.graphics.clear();
+
+      if (newType == 0) {
+        return;
+      }
+
+      var myGraphics = new createjs.Graphics();
+
+      var color = colorArray[newType-1];
+      myGraphics.beginFill(color).drawCircle(circle.x,circle.y,circle.radius);
+      circle.graphics = myGraphics;
+    }
+
+    function drawCircle(x,y,radius,color) {
+      
+       var g = new createjs.Graphics();
+       g.beginFill(color);       
+       g.drawCircle(x,y,radius);
+
+       var circle = new createjs.Shape();
+       circle.graphics = g;
+       circle.x = x;
+       circle.y = y;
+       circle.radius = radius;       
+       return circle;
+    }
+
+    function applyRule(cell,i,j) {
+
+      // var cloneCell ={};
+      // cloneCell.spawnTime =  cell.spawnTime;
+      // cloneCell.circle = new createjs.Shape();
+      // cloneCell.circle.graphics = cell.circle.graphics.clone();
+      // cloneCell.circle.x = cell.circle.x;
+      // cloneCell.circle.y = cell.circle.y
+      // cloneCell.circle.radius = cell.circle.radius;
+      // cloneCell.type = cell.type;
+      
+      if ((i == 0) || (j == 0) || (i==cellArray.length - 1) || ( j == cellArray[0].length -  1)) {
+        return 0;
+      }
+      
+
+      var activeCount = 0;
+      for (var x = -1; x <= 1; ++x) {
+        for (var y = -1; y <= 1; ++y) {
+          if (cellArray[i + y][j + x].type == 1) {
+            activeCount++;
+          }     
+        }
+      }
+      var cellLeft = cellArray[i][j - 1];
+      var cellRight = cellArray[i][j + 1];
+      
+      if (cell.type == 0) {
+        // if ((cellLeft.type == 1) || (cellRight.type == 1)) {
+        if ((activeCount >= 1) && (activeCount <= 2)) {
+
+          var randomVal = Math.random(1);
+
+          return Math.floor(randomVal + 0.5);
+
+        }
+      }
+      return cell.type;
+    }
+
+    </script>
+  </head>
+  <body onload="init();">
+    <canvas id="myCanvas" width="600" height="600"></canvas>
+  </body>
+</html>
