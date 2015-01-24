@@ -8,7 +8,25 @@
 
     var cellArray = [];
     var colorArray = ["red","blue"];
-    var conversionArray = [.6,.4];
+
+    var CONVERSION_RED = 0.5;
+    var CONVERSION_BLUE = 0.5;
+
+    var AGGRESSION_RED = 0;
+    var AGGRESSION_BLUE = 0;
+
+    var REPRODUCTION_RED = 2;
+    var REPRODUCTION_BLUE = 2;
+
+    var AGGRESSION_INCREMENT = 2;
+
+    var AGGRESSION_SCALE_RED = 5;
+    var AGGRESSION_SCALE_BLUE = 5;
+
+    var BLAST_THRESHOLD_RED = .25;
+    var BLAST_THRESHOLD_BLUE = .25;
+
+    var conversionArray = [CONVERSION_RED,CONVERSION_BLUE];
     var aggressionArray = [0,0];
     var reproductionArray = [4,2]; 
     var stage;
@@ -21,12 +39,13 @@
     var totalConversionArray = [0,0,0]; //index is for type
     var totalCountArray = [0,0,0];
 
-    var aggresionIncrement = 2;
+    var aggressionIncrement = 2;
     var aggressionScale = [0,5,5];
   
 
     var CONVERSION_FACTOR = 10;
     var expiryTime = 30;
+    var blastThresholdArray = [0,0.25,0.25];
 
     var selectedType = 0;
       
@@ -120,10 +139,33 @@
       
       updateRules();
 
+      updateCoefficients();
+
       stage.update();      
 
     }
 
+
+    function updateCoefficients() {
+      
+      var delta = 100;
+
+      conversionArray[0] += (CONVERSION_RED - conversionArray[0])/delta;
+      conversionArray[1] += (CONVERSION_BLUE - conversionArray[1])/delta;
+
+      reproductionArray[0] += (REPRODUCTION_RED - reproductionArray[0])/delta;
+      reproductionArray[1] -= (REPRODUCTION_BLUE - reproductionArray[1])/delta;
+
+      aggressionScale[1] += (AGGRESSION_SCALE_BLUE - aggressionScale[1])/delta;
+      aggressionScale[2] += (AGGRESSION_SCALE_BLUE - aggressionScale[2])/delta;
+      
+      aggressionIncrement += (AGGRESSION_INCREMENT - aggressionIncrement)/delta;
+
+      blastThresholdArray[1] = (BLAST_THRESHOLD_RED - blastThresholdArray[1])/delta;
+      blastThresholdArray[2] = (BLAST_THRESHOLD_BLUE - blastThresholdArray[2])/delta;
+
+
+    }
 
     function updateRules() {
       
@@ -132,7 +174,7 @@
           aggressionArray[i] = 0;
         }
 
-        if (totalConversionArray[i] > .25*totalCountArray[i]) {
+        if (totalConversionArray[i] > blastThresholdArray[i]*totalCountArray[i]) {
           aggressionArray[i] += aggresionIncrement;
           totalConversionArray[i] = 0;
         }
@@ -351,10 +393,14 @@
     function handleClickMilitaryInc(){
       aggressionScale[2]+=2;
       aggressionIncrement+=2;
+
+      blastThresholdArray[1] = max(0,blastThresholdArray[1] - .1);
     }
     function handleClickMilitaryDec() {
       aggressionScale[2]-=2;
       aggressionIncrement-=2;
+
+      blastThresholdArray[1] = min(1,blastThresholdArray[1] + .1);
     }
 
     </script>
