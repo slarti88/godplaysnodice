@@ -8,6 +8,9 @@
 
     var cellArray = [];
     var colorArray = ["red","blue"];
+    var conversionArray = [.6,.4];
+    var aggressionArray = [0,0];
+    var reproductionArray = [4,2]; 
     var stage;
     var count =0;
 
@@ -15,60 +18,62 @@
 
     var rows;
     var cols;
+    var totalConversionArray = [0,0,0]; //index is for type
+    var totalCountArray = [0,0,0];
 
+    var aggresionIncrement = 2;
+    var aggressionScale = [0,5,5];
+  
+
+    var CONVERSION_FACTOR = 10;
+    var expiryTime = 30;
+
+    var selectedType = 0;
+      
     function init() {
         stage = new createjs.Stage("myCanvas");
         rows = stage.canvas.height/(cellHeight*scale);
-        cols = stage.canvas.width/(cellWidth*scale);
+        cols = (stage.canvas.width - 200)/(cellWidth*scale);
 
+        createButton();
 
         for (var i = 0;i < rows; ++i) {
           var tempArray = [];
           for (var j = 0;j < cols; ++j) {
             var cell ={};
             
+            cell.rHits = 0;
+            cell.bHits = 0;
             cell.spawnTime = 0;
             tempArray.push(cell);
 
-            
-
-            // var randomVal = Math.random(0.7);
-
-          // //console.log("randomval " + randomVal);
-            
-            // if (randomVal > 0.5) {
-            //     cell.type = 1;
-            // }
-
-
-            if ((i == rows/2)&& (j == cols/2)) {
+            // if ((i == Math.floor(rows/4)) && (j == Math.floor(cols/4))) {
+              if ((i == 4) && (j == 4)) {
               circle = drawCircle((j+.5)*cellWidth,
                      (i+.5)*cellHeight,
                      cellWidth,"red");
               cell.type = 1;
-            } else {
+            }
+            // else if ((i == Math.floor(3*rows/4))&& (j == Math.floor(3*cols/4))) {
+              else if ((i == rows - 4) && (j == cols - 4)) {
+              circle = drawCircle((j+.5)*cellWidth,
+                     (i+.5)*cellHeight,
+                     cellWidth,"blue");
+              cell.type = 2;
+            }  
+            else {
               circle = drawCircle((j+.5)*cellWidth,
                      (i+.5)*cellHeight,
                      cellWidth,"blue");
               circle.graphics.clear();
               cell.type = 0;
             }
-          //     circle = drawCircle((j+.5)*cellWidth,
-          //            (i+.5)*cellHeight,
-          //            cellWidth,"red");
-          //            cell.type = 1;
-          //   } else {
-              
-                       
-          //   }
             stage.addChild(circle);
             cell.circle = circle;
           }
           cellArray.push(tempArray);
 
         }
-
-        console.log("cell l1 " + cellArray.length + " l2 " + cellArray[0].length);
 
         createjs.Ticker.framerate = 10;
         createjs.Ticker.addEventListener("tick", handleTick)
@@ -77,32 +82,61 @@
     }
 
     function handleTick() {
-      ++count;
       
-
-      //console.log("rows " + rows + " cols " + cols);
       var typeArray = [];
       for (var i = 0;i < rows; ++i) {
-        // var tempArray = cellArray[i];
-        // var cloneRowArray = [];
+      
         for (var j = 0;j < cols; ++j) {
           var cell = cellArray[i][j];
           typeArray.push(applyRule(cell,i,j));
-          // cloneRowArray.push(cloneCell);
+      
         }
-        // cloneArray.push(cloneRowArray);
+        
       }
+
+      totalCountArray[0] = 0;
+      totalCountArray[1] = 0;
+      totalCountArray[2] = 0;
 
       for(var i = 0;i < cellArray.length;i++){
         for(var j =0;j < cellArray[i].length;j++){
-          cellArray[i][j].type = typeArray[i*cellArray.length + j];
-          var cell = cellArray[i][j]; 
+          var newType = typeArray[i*cellArray.length + j];
+          var cell = cellArray[i][j];
+          // if (cell.type == newType) {
+            // OLd age check
+          //   if ((cell.spawnTime > expiryTime) && (newType != 0)) {
+          //     newType = 0;
+          //     cell.spawnTime = 0;
+          //     console.log("spawntime");
+          //   }
+          // }
+          cell.type = newType;
+           
           changeCircle(cell.circle,cell.type);    
+          totalCountArray[cell.type]++;
+          cell.spawnTime++;
         }
       }
       
+      updateRules();
 
       stage.update();      
+
+    }
+
+
+    function updateRules() {
+      
+      for (var i = 0; i < 2; ++i) {
+        if (aggressionArray[i] > 0) {
+          aggressionArray[i] = 0;
+        }
+
+        if (totalConversionArray[i] > .25*totalCountArray[i]) {
+          aggressionArray[i] += aggresionIncrement;
+          totalConversionArray[i] = 0;
+        }
+      }
 
     }
 
@@ -135,49 +169,197 @@
        return circle;
     }
 
-    function applyRule(cell,i,j) {
+  function getDistancesFromNeighbours(inputType,i,j) {
+      var distance = 1;
 
-      // var cloneCell ={};
-      // cloneCell.spawnTime =  cell.spawnTime;
-      // cloneCell.circle = new createjs.Shape();
-      // cloneCell.circle.graphics = cell.circle.graphics.clone();
-      // cloneCell.circle.x = cell.circle.x;
-      // cloneCell.circle.y = cell.circle.y
-      // cloneCell.circle.radius = cell.circle.radius;
-      // cloneCell.type = cell.type;
+      var count = 0;
+
+    for (var x = -1*distance; x <= distance; ++x) {
+        for (var y = -1*distance; y <= distance; ++y) { 
+        
+        if (((i + y < 0) || (i + y > cellArray.length - 1)) ||
+            ((j + x < 0) || (j + x > cellArray[0].length - 1))) {
+              continue;
+        }
+        if (cellArray[i + y][j + x].type == inputType) {
+            ++count;     
+        }
+      }
+    }
+
+    var aggressionCount = 0;
+  
+    distance = aggressionScale[cellArray[i][j].type];
+
+    for (var x = -1*distance; x <= distance; ++x) {
+        for (var y = -1*distance; y <= distance; ++y) {  
+        
+        if (((i + y < 0) || (i + y > cellArray.length - 1)) ||
+            ((j + x < 0) || (j + x > cellArray[0].length - 1))) {
+              continue;
+        }
+        if (cellArray[i + y][j + x].type == inputType) {
+          
+          aggressionCount++;     
+        }
+      }
+    }
+
+    var retObj = {};
+    retObj.count = count;
+    retObj.aggressionCount = aggressionCount;
+
+    return retObj;
+  }
+
+    function applyRule(cell,i,j) {
       
-      if ((i == 0) || (j == 0) || (i==cellArray.length - 1) || ( j == cellArray[0].length -  1)) {
+      if ((i == 0) || (j == 0) || 
+      (i==cellArray.length - 1) || 
+      ( j == cellArray[0].length -  1)) {
         return 0;
       }
       
-
-      var activeCount = 0;
-      for (var x = -1; x <= 1; ++x) {
-        for (var y = -1; y <= 1; ++y) {
-          if (cellArray[i + y][j + x].type == 1) {
-            activeCount++;
-          }     
-        }
-      }
-      var cellLeft = cellArray[i][j - 1];
-      var cellRight = cellArray[i][j + 1];
       
+      var distancesRed = getDistancesFromNeighbours(1,i,j);
+      var distancesBlue = getDistancesFromNeighbours(2,i,j);
+
+      var redCount = distancesRed.count;
+      var redCountAggression = distancesRed.aggressionCount;
+
+      var blueCount = distancesBlue.count;
+      var blueCountAggression = distancesBlue.aggressionCount;
+
+      var newCellType = cell.type;
       if (cell.type == 0) {
-        // if ((cellLeft.type == 1) || (cellRight.type == 1)) {
-        if ((activeCount >= 1) && (activeCount <= 2)) {
+        if (((redCount >= 1) && (redCount <= 3))) {
 
-          var randomVal = Math.random(1);
+          if (cell.rHits > reproductionArray[0]) {
+            var randomVal = Math.random(1);
+            newCellType = Math.floor(randomVal + 0.5);  
+          } else {
+            cell.rHits++;
+          }
+        } 
+        if((blueCount >=1) && (blueCount <= 3)) {
 
-          return Math.floor(randomVal + 0.5);
-
+          if (cell.bHits > reproductionArray[1]) {
+            var randomVal = Math.random(1);
+            newCellType = Math.floor(randomVal + 0.5) * 2;  
+            // cell.bHits = -20;
+          } else {
+            cell.bHits++;
+          }
+        }
+      } 
+      else if (cell.type == 1) {
+       if(blueCountAggression != 0){ 
+          if(redCountAggression * aggressionArray[0] < blueCountAggression * aggressionArray[1]){
+            newCellType = 0;
+          }else
+           if ((blueCount != 0) && (blueCount*conversionArray[1] > redCount*conversionArray[0])) {
+            if (cell.bHits > conversionArray[0]*CONVERSION_FACTOR) {
+              newCellType = 2;
+              totalConversionArray[0]++;
+              cell.bHits=0; 
+            } else {
+              cell.bHits++;
+            }
+          }
+        } 
+      } else if (cell.type == 2) {
+        if(redCountAggression != 0){
+          if(redCountAggression * aggressionArray[0] > blueCountAggression * aggressionArray[1]){
+            newCellType = 0;
+          }else
+          if ((redCount != 0) && (redCount*conversionArray[0] > blueCount*conversionArray[1])) {
+              if (cell.rHits > conversionArray[1]*CONVERSION_FACTOR) {
+                newCellType = 1;
+                totalConversionArray[1]++;
+                cell.rHits = 0
+                } else {
+                  cell.rHits++;
+                }
+          }
         }
       }
-      return cell.type;
+      return newCellType;
+    }
+
+
+    // Button
+    function createButton() {
+      
+      var button = new createjs.Shape();
+      button.graphics.beginFill("red").drawRoundRect(0, 0, 40,40,5);
+      //Set position of Shape instance.
+      button.x = 650; button.y = 300;
+      //Add Shape instance to stage display list.
+      stage.addChild(button);
+
+      button.addEventListener("click", handleClickFoodDec);
+
+      button = new createjs.Shape();
+      button.graphics.beginFill("red").drawRoundRect(0, 0, 40,40,5);
+      //Set position of Shape instance.
+      button.x = 650; button.y = 150;
+      //Add Shape instance to stage display list.
+      stage.addChild(button);
+
+      button.addEventListener("click", handleClickFoodInc);
+
+      button = new createjs.Shape();
+      button.graphics.beginFill("green").drawRoundRect(0, 0, 40,40,5);
+      //Set position of Shape instance.
+      button.x = 700; button.y = 150;
+      //Add Shape instance to stage display list.
+      stage.addChild(button);
+
+      button.addEventListener("click", handleClickMilitaryInc);
+
+      button = new createjs.Shape();
+      button.graphics.beginFill("green").drawRoundRect(0, 0, 40,40,5);
+      //Set position of Shape instance.
+      button.x = 700; button.y = 300;
+      //Add Shape instance to stage display list.
+      stage.addChild(button);
+
+      button.addEventListener("click", handleClickMilitaryDec);
+
+    }
+
+    function handleClickFoodInc(event){
+    
+      conversionArray[0] += .2;
+      conversionArray[1] -= .2;
+
+      reproductionArray[0] -= 2;
+      reproductionArray[1] += 2;
+
+    }
+
+    function handleClickFoodDec(event){
+      
+      conversionArray[0] -= .2;
+      conversionArray[1] += .2;
+
+      reproductionArray[0] += 2;
+      reproductionArray[1] -= 2;
+
+    }
+
+    function handleClickMilitaryInc(){
+      aggressionScale[2]+=2;
+      aggressionIncrement+=2;
+    }
+    function handleClickMilitaryDec() {
+      aggressionScale[2]-=2;
+      aggressionIncrement-=2;
     }
 
     </script>
   </head>
   <body onload="init();">
-    <canvas id="myCanvas" width="600" height="600"></canvas>
+    <canvas id="myCanvas" width="800" height="600"></canvas>
   </body>
 </html>
