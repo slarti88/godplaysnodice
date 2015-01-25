@@ -7,28 +7,36 @@
     var cellHeight = 6;
 
     var cellArray = [];
-    var colorArray = ["red","blue"];
+    var colorArray = ["red","blue","green"];
 
-    var CONVERSION_RED = 0.5;
-    var CONVERSION_BLUE = 0.5;
+    var TOTAL_TYPE_COUNT = 4;
 
-    var AGGRESSION_RED = 0;
-    var AGGRESSION_BLUE = 0;
+    var CONVERSION_DEFAULT = 0.5;
+    var AGGRESSION_DEFAULT = 0;
+    var REPRODUCTION_DEFAULT = 2;
+    var AGGRESSION_INCREMENT_DEFAULT = 2;
+    var BLAST_THRESHOLD_DEFAULT = .25;
 
-    var REPRODUCTION_RED = 2;
-    var REPRODUCTION_BLUE = 2;
+    var conversion_overshoot = [0,0.5,0.5,0.5];
+    
 
-    var AGGRESSION_INCREMENT = 2;
+    var aggression_overshoot = [0,0,0,0];
+    
 
-    var AGGRESSION_SCALE_RED = 5;
-    var AGGRESSION_SCALE_BLUE = 5;
+    var reproduction_overshoot = [2,2,2,2];
 
-    var BLAST_THRESHOLD_RED = .25;
-    var BLAST_THRESHOLD_BLUE = .25;
 
-    var conversionArray = [CONVERSION_RED,CONVERSION_BLUE];
-    var aggressionArray = [0,0];
-    var reproductionArray = [4,2]; 
+    var aggression_increment_overshoot = 2; //not an array
+
+    var AGGRESSION_SCALE_DEFAULT = [5,5,5,5];
+    
+
+    var blast_threshold_overshoot = [0,.25,.25,.25];
+    
+
+    var conversionArray = [0,0.5,0.5,0.5];
+    var aggressionArray = [0,0,0,0];
+    var reproductionArray = [0,4,2,2]; 
     var stage;
     var count =0;
 
@@ -36,16 +44,16 @@
 
     var rows;
     var cols;
-    var totalConversionArray = [0,0,0]; //index is for type
-    var totalCountArray = [0,0,0];
+    var totalConversionArray = [0,0,0,0]; //index is for type
+    var totalCountArray = [0,0,0,0];
 
     var aggressionIncrement = 2;
-    var aggressionScale = [0,5,5];
+    var aggressionScale = [0,5,5,5];
   
 
     var CONVERSION_FACTOR = 10;
     var expiryTime = 30;
-    var blastThresholdArray = [0,0.25,0.25];
+    var blastThresholdArray = [0,0.25,0.25,0.25];
 
     var selectedType = 0;
       
@@ -61,8 +69,7 @@
           for (var j = 0;j < cols; ++j) {
             var cell ={};
             
-            cell.rHits = 0;
-            cell.bHits = 0;
+            cell.hits = [0,0,0,0];
             cell.spawnTime = 0;
             tempArray.push(cell);
 
@@ -79,6 +86,12 @@
                      (i+.5)*cellHeight,
                      cellWidth,"blue");
               cell.type = 2;
+            }  
+            else if ((i == rows/2) && (j == cols/2)) {
+              circle = drawCircle((j+.5)*cellWidth,
+                     (i+.5)*cellHeight,
+                     cellWidth,"green");
+              cell.type = 3;
             }  
             else {
               circle = drawCircle((j+.5)*cellWidth,
@@ -116,21 +129,13 @@
       totalCountArray[0] = 0;
       totalCountArray[1] = 0;
       totalCountArray[2] = 0;
+      totalCountArray[3] = 0;
 
       for(var i = 0;i < cellArray.length;i++){
         for(var j =0;j < cellArray[i].length;j++){
           var newType = typeArray[i*cellArray.length + j];
           var cell = cellArray[i][j];
-          // if (cell.type == newType) {
-            // OLd age check
-          //   if ((cell.spawnTime > expiryTime) && (newType != 0)) {
-          //     newType = 0;
-          //     cell.spawnTime = 0;
-          //     console.log("spawntime");
-          //   }
-          // }
-          cell.type = newType;
-           
+          cell.type = newType;           
           changeCircle(cell.circle,cell.type);    
           totalCountArray[cell.type]++;
           cell.spawnTime++;
@@ -150,32 +155,28 @@
       
       var delta = 100;
 
-      conversionArray[0] += (CONVERSION_RED - conversionArray[0])/delta;
-      conversionArray[1] += (CONVERSION_BLUE - conversionArray[1])/delta;
-
-      reproductionArray[0] += (REPRODUCTION_RED - reproductionArray[0])/delta;
-      reproductionArray[1] -= (REPRODUCTION_BLUE - reproductionArray[1])/delta;
-
-      aggressionScale[1] += (AGGRESSION_SCALE_BLUE - aggressionScale[1])/delta;
-      aggressionScale[2] += (AGGRESSION_SCALE_BLUE - aggressionScale[2])/delta;
-      
-      aggressionIncrement += (AGGRESSION_INCREMENT - aggressionIncrement)/delta;
-
-      blastThresholdArray[1] = (BLAST_THRESHOLD_RED - blastThresholdArray[1])/delta;
-      blastThresholdArray[2] = (BLAST_THRESHOLD_BLUE - blastThresholdArray[2])/delta;
-
-
+      for (var i = 0; i < TOTAL_TYPE_COUNT; ++i) {
+        conversionArray[i] = tweenCoefficients(conversionArray[i],conversion_overshoot[i],CONVERSION_DEFAULT,delta);
+        reproductionArray[i] = tweenCoefficients(reproductionArray[i],reproduction_overshoot[i],REPRODUCTION_DEFAULT,delta);
+        blastThresholdArray[i] = tweenCoefficients(blastThresholdArray[i],blast_threshold_overshoot[i],BLAST_THRESHOLD_DEFAULT,delta);  
+      }
     }
+
+    function tweenCoefficients(value,overshoot,defaultVal,delta) {
+        var result  = value + (overshoot - value)/delta;
+        return result;
+    }
+
 
     function updateRules() {
       
-      for (var i = 0; i < 2; ++i) {
+      for (var i = 0; i < TOTAL_TYPE_COUNT; ++i) {
         if (aggressionArray[i] > 0) {
           aggressionArray[i] = 0;
         }
 
         if (totalConversionArray[i] > blastThresholdArray[i]*totalCountArray[i]) {
-          aggressionArray[i] += aggresionIncrement;
+          aggressionArray[i] += aggressionIncrement;
           totalConversionArray[i] = 0;
         }
       }
@@ -231,7 +232,7 @@
 
     var aggressionCount = 0;
   
-    distance = aggressionScale[cellArray[i][j].type];
+    distance = 5; //aggressionScale[cellArray[i][j].type];
 
     for (var x = -1*distance; x <= distance; ++x) {
         for (var y = -1*distance; y <= distance; ++y) {  
@@ -254,6 +255,45 @@
     return retObj;
   }
 
+function spawnCell(cell,count,type) {
+  var newCellType = 0;
+  if (((count >= 1) && (count <= 3))) {
+      if (cell.hits[type] > reproductionArray[type]) {
+        var randomVal = Math.random(1);
+        newCellType = Math.floor(randomVal + 0.5);  
+      } else {
+        cell.hits[type]++;
+      }
+    }
+
+    return newCellType;
+}
+
+function convertOrDestroyCell(cell,oldCellType,type,enemyType,countArray,aggressionCountArray) {
+
+  var newCellType = oldCellType;
+  if(aggressionCountArray[enemyType] != 0) { 
+      if(aggressionCountArray[type] * aggressionArray[type] < 
+        aggressionCountArray[enemyType] * aggressionArray[enemyType]){
+          newCellType = 0;
+      } else if ((countArray[enemyType] != 0) && 
+                 (countArray[enemyType]*conversionArray[enemyType] > 
+                  countArray[type]*conversionArray[type])) {
+
+        if (cell.hits[enemyType] > conversionArray[type]*CONVERSION_FACTOR) {
+          newCellType = enemyType;
+          totalConversionArray[type]++;
+          cell.hits[enemyType]=0; 
+        } else {
+          cell.hits[enemyType]++;
+        }
+      }
+    }
+
+    return newCellType;
+
+}
+
     function applyRule(cell,i,j) {
       
       if ((i == 0) || (j == 0) || 
@@ -265,6 +305,7 @@
       
       var distancesRed = getDistancesFromNeighbours(1,i,j);
       var distancesBlue = getDistancesFromNeighbours(2,i,j);
+      var distancesGreen = getDistancesFromNeighbours(3,i,j);
 
       var redCount = distancesRed.count;
       var redCountAggression = distancesRed.aggressionCount;
@@ -272,58 +313,33 @@
       var blueCount = distancesBlue.count;
       var blueCountAggression = distancesBlue.aggressionCount;
 
+      var aggressionCountArray = [0,redCountAggression,blueCountAggression,
+                                  distancesGreen.aggressionCount];
+      var countArray = [0,redCount,blueCount,distancesGreen.count];
+
       var newCellType = cell.type;
       if (cell.type == 0) {
-        if (((redCount >= 1) && (redCount <= 3))) {
-
-          if (cell.rHits > reproductionArray[0]) {
-            var randomVal = Math.random(1);
-            newCellType = Math.floor(randomVal + 0.5);  
-          } else {
-            cell.rHits++;
-          }
+        if (spawnCell(cell,countArray[1],1)) {
+          newCellType = 1;
         } 
-        if((blueCount >=1) && (blueCount <= 3)) {
-
-          if (cell.bHits > reproductionArray[1]) {
-            var randomVal = Math.random(1);
-            newCellType = Math.floor(randomVal + 0.5) * 2;  
-            // cell.bHits = -20;
-          } else {
-            cell.bHits++;
-          }
+        if (spawnCell(cell,countArray[2],2)) {
+          newCellType = 2;
         }
+        if (spawnCell(cell,countArray[3],3)) {
+          newCellType = 3;
+        }        
+
+
       } 
       else if (cell.type == 1) {
-       if(blueCountAggression != 0){ 
-          if(redCountAggression * aggressionArray[0] < blueCountAggression * aggressionArray[1]){
-            newCellType = 0;
-          }else
-           if ((blueCount != 0) && (blueCount*conversionArray[1] > redCount*conversionArray[0])) {
-            if (cell.bHits > conversionArray[0]*CONVERSION_FACTOR) {
-              newCellType = 2;
-              totalConversionArray[0]++;
-              cell.bHits=0; 
-            } else {
-              cell.bHits++;
-            }
-          }
-        } 
+        newCellType = convertOrDestroyCell(cell,newCellType,1,2,countArray,aggressionCountArray);
+        newCellType = convertOrDestroyCell(cell,newCellType,1,3,countArray,aggressionCountArray);
       } else if (cell.type == 2) {
-        if(redCountAggression != 0){
-          if(redCountAggression * aggressionArray[0] > blueCountAggression * aggressionArray[1]){
-            newCellType = 0;
-          }else
-          if ((redCount != 0) && (redCount*conversionArray[0] > blueCount*conversionArray[1])) {
-              if (cell.rHits > conversionArray[1]*CONVERSION_FACTOR) {
-                newCellType = 1;
-                totalConversionArray[1]++;
-                cell.rHits = 0
-                } else {
-                  cell.rHits++;
-                }
-          }
-        }
+        newCellType = convertOrDestroyCell(cell,newCellType,2,1,countArray,aggressionCountArray);
+        newCellType = convertOrDestroyCell(cell,newCellType,2,3,countArray,aggressionCountArray);
+      } else if (cell.type == 3) {
+        newCellType = convertOrDestroyCell(cell,newCellType,3,1,countArray,aggressionCountArray);
+        newCellType = convertOrDestroyCell(cell,newCellType,3,2,countArray,aggressionCountArray);
       }
       return newCellType;
     }
@@ -372,21 +388,21 @@
 
     function handleClickFoodInc(event){
     
-      conversionArray[0] += .2;
-      conversionArray[1] -= .2;
+      conversionArray[1] += .2;
+      conversionArray[2] -= .2;
 
-      reproductionArray[0] -= 2;
-      reproductionArray[1] += 2;
+      reproductionArray[1] -= 2;
+      reproductionArray[2] += 2;
 
     }
 
     function handleClickFoodDec(event){
       
-      conversionArray[0] -= .2;
-      conversionArray[1] += .2;
+      conversionArray[1] -= .2;
+      conversionArray[2] += .2;
 
-      reproductionArray[0] += 2;
-      reproductionArray[1] -= 2;
+      reproductionArray[1] += 2;
+      reproductionArray[2] -= 2;
 
     }
 
@@ -394,13 +410,13 @@
       aggressionScale[2]+=2;
       aggressionIncrement+=2;
 
-      blastThresholdArray[1] = max(0,blastThresholdArray[1] - .1);
+      blastThresholdArray[1] = Math.max(0.1,blastThresholdArray[1] - .1);
     }
     function handleClickMilitaryDec() {
       aggressionScale[2]-=2;
       aggressionIncrement-=2;
 
-      blastThresholdArray[1] = min(1,blastThresholdArray[1] + .1);
+      blastThresholdArray[1] = Math.min(0.5,blastThresholdArray[1] + .1);
     }
 
     </script>
